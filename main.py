@@ -52,18 +52,53 @@ def map_continuous_ais(ais, l):
         first = v[0]
         last = v[-1]
         for i in range(len(rgb_img)):
-            if i <= first:
+            if i <= first: # reconstructing AIS information before we see the first AIS
+                if len(v) > 1: # this case we take the first and second AIS point and go backward in frames to estimate a linear position
+                    first_ais_l = ais[v[0]]
+                    next_ais_l = ais[v[1]]
 
-                elements = ais[first]
-                for e in elements:
-                    if e['mmsi'] == mmsi:
-                        ais_cont[mmsi].append((e['lat'], e['lon'], e['speed']))
-            elif i >= last:
+                    for e in first_ais_l:
+                        if e['mmsi'] == mmsi:
+                            first_ais = e
+                    for e in next_ais_l:
+                        if e['mmsi'] == mmsi:
+                            next_ais = e
+                    lon_steps = (float(first_ais['lon']) - float(next_ais['lon'])) / (v[1] - v[0])
+                    lat_steps = (float(first_ais['lat']) - float(next_ais['lat'])) / (v[1] - v[0])
+                    speed_steps = (float(first_ais['speed']) - float(next_ais['speed'])) / (v[1] - v[0])
+                    steps = v[0] - i
+                    ais_cont[mmsi].append((float(first_ais['lat']) + lat_steps * steps,
+                                           float(first_ais['lon']) + lon_steps * steps,
+                                           float(first_ais['speed']) + speed_steps * steps))
+                else: #if we only have one AIS point then we replicate that point over all the frames
+                    if len(v) > 1:  # this case we take the first and second AIS point and go backward in frames to estimate a linear position
+                        first_ais_l = ais[v[-2]]
+                        next_ais_l = ais[v[-1]]
+
+                        for e in first_ais_l:
+                            if e['mmsi'] == mmsi:
+                                first_ais = e
+                        for e in next_ais_l:
+                            if e['mmsi'] == mmsi:
+                                next_ais = e
+                        lon_steps = (float(next_ais['lon']) - float(first_ais['lon'])) / (v[1] - v[0])
+                        lat_steps = (float(next_ais['lat']) - float(first_ais['lat'])) / (v[1] - v[0])
+                        speed_steps = (float(next_ais['speed']) - float(first_ais['speed'])) / (v[1] - v[0])
+                        steps = i - v[-1]
+                        ais_cont[mmsi].append((float(next_ais['lat']) + lat_steps * steps,
+                                               float(next_ais['lon']) + lon_steps * steps,
+                                               float(next_ais['speed']) + speed_steps * steps))
+                    else:
+                        elements = ais[first]
+                        for e in elements:
+                            if e['mmsi'] == mmsi:
+                                ais_cont[mmsi].append((e['lat'], e['lon'], e['speed']))
+            elif i >= last: # recnstructing AIS after we see the last AIS in the frames
                 elements = ais[last]
                 for e in elements:
                     if e['mmsi'] == mmsi:
                         ais_cont[mmsi].append((e['lat'], e['lon'], e['speed']))
-            else:
+            else: # reconstructing the caps between AIS-data
                 limits = find_limits(v, i)
                 first_ais_l = ais[limits[0]]
                 for e in first_ais_l:
