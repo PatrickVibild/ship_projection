@@ -13,7 +13,7 @@ def distance_between_coordinates(c1, c2):
     if c1[1] > c2[1]:
         x = -x
     y = haversine(c1, (c2[0], c1[1]), Unit.METERS)
-    if c1[1] > c2[1]:
+    if c1[0] > c2[0]:
         y = -y
     dist = haversine(c1, c2, Unit.METERS)
     return dist, x, y

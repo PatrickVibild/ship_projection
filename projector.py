@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import cv2 as cv
 from scipy.spatial.transform import Rotation as R
@@ -26,13 +28,22 @@ def tvec_camera(height):
     return tvec
 
 
+def angle_in_range(alpha, lower, upper):
+    return (alpha - lower) % 360 <= (upper - lower) % 360
+
+
+def angle_2dpoints(point):
+    radians = math.atan2(point[1], point[0])
+    # we -90 degrees to match our cv2 coordinate system. Then +360 * 2 to ensure we have a positive angle
+    degrees = math.degrees(radians)
+    #return (math.degrees(radians) + 630 ) % 360
+    return (degrees + 360 ) % 360
+
+
 def xyz_to_opencv_coord(x, y, z):
     # https://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/OWENS/LECT9/node2.html
     # transforming world coordinates to OpenCV coordinate system
     return np.array([[-y, z, x]], np.float32)
-
-
-
 
 
 def projection_baby(camera_matrix, dist_coeffs, camera_c, ship_c, orientation, height):
@@ -40,13 +51,23 @@ def projection_baby(camera_matrix, dist_coeffs, camera_c, ship_c, orientation, h
     tvec = tvec_camera(0)
     # https://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/OWENS/LECT9/node2.html
     distance, x, y = distance_between_coordinates(camera_c, ship_c)
+    ship_angle = angle_2dpoints((x, y))
+    # cu 81 camera hsa a 104 horizontal FOV we only check ships in that frame
+    angle_range_l = ((orientation[0] - 52) + 360) % 360
+    angle_range_h = ((orientation[0] + 52) + 360) % 360
+    # CV projection takes also point behind the camera. We check the angle that the camera is looking
+    # and only consider points in front of the camera.
+    if not angle_in_range(ship_angle, angle_range_l, angle_range_h):
+        behind = True
+    else:
+        behind = False
     points_3d = xyz_to_opencv_coord(x, y, height)
 
     points_2d, _ = cv.projectPoints(points_3d,
                                     rvec, tvec,
                                     camera_matrix,
                                     dist_coeffs)
-    return points_2d, distance
+    return points_2d, distance, behind
 
 
 if __name__ == '__main__':
@@ -71,9 +92,8 @@ if __name__ == '__main__':
     ship_tug2 = (37.4509, 126.58565)
     ship_tug3 = (37.448635, 126.578202)
 
-
-    #euler = ((63.3125), -0.4375, 0.0625)
-    euler = (207,0,0)
+    # euler = ((63.3125), -0.4375, 0.0625)
+    euler = (207, 0, 0)
     points_2d_tanker = projection_baby(camera_matrix, dist_coeffs, camera_c, ship_tanker, euler, camera_h)
     points_2d_t1 = projection_baby(camera_matrix, dist_coeffs, camera_c, ship_tug1, euler, camera_h)
     points_2d_t2 = projection_baby(camera_matrix, dist_coeffs, camera_c, ship_tug2, euler, camera_h)
