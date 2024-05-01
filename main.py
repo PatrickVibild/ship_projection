@@ -151,8 +151,9 @@ def magic_mf(path):
         euler = orientation[idx]
         # transform coordinates from sensor to world coordinates.
         # reference, 0 degrees when camera looking east
-        euler['x'] = 270 - euler['x']
+        euler['x'] = 270 - euler['x'] + 10
         euler['y'] = -euler['y']
+        euler['z'] = euler['z'] - 2
 
         img = cv.imread(rgb_img[idx])
 
@@ -181,8 +182,8 @@ def magic_mf(path):
                 if mmsi_ref != '440016770':
                     for point in proj_2d.astype(int):
                         pos = (point[0][0], point[0][1])
-                        img = cv.circle(img, pos, 10, 255, -1)
-                        cv.putText(img, str(mmsi_ref), (pos[0], pos[1] - 10), cv.FONT_HERSHEY_SIMPLEX, 0.9,
+                        img = cv.circle(img, pos, 50, 255, 2)
+                        cv.putText(img, str(mmsi_ref), (pos[0] - 80, pos[1] - 50), cv.FONT_HERSHEY_SIMPLEX, 0.9,
                                    (36, 255, 12),
                                    2)
             except:
@@ -195,7 +196,7 @@ def list_folders(path):
 
 
 if __name__ == '__main__':
-    # path = '/home/patrick/dataset/dataset'
+    # path = '/home/patrick/Data/Incheon/dataset'
     #
     # folders = list_folders(path)
     #
@@ -203,5 +204,5 @@ if __name__ == '__main__':
     #     to_process = path + '/' + folder
     #     magic_mf(to_process)
 
-    path = '/home/patrick/dataset/dataset/1699578802'
+    path = '/home/patrick/Data/Incheon/dataset/1700460994'
     magic_mf(path)

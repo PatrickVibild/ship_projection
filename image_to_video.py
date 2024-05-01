@@ -27,6 +27,6 @@ def make_video(image_folder, video_name, fps=10):
 
 
 if __name__ == '__main__':
-    make_video('/home/patrick/dataset_no_focus/1698207737/process', '1698207737.mp4')
+    make_video('/home/patrick/dataset_no_focus/1698207737/rgb', '1698207737.mp4')
 # This function would be called with the path to the image folder and the desired video file name:
 # make_video('path_to_images', 'output_video.mp4', 10)

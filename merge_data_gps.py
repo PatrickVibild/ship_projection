@@ -5,18 +5,26 @@ import random
 def list_folders(path):
     return [f.name for f in os.scandir(path) if f.is_dir()]
 
-path = '/home/patrick/dataset/dataset'
-gps_folder= '/home/patrick/dataset/gps_data'
+path = '/home/patrick/Data/Incheon/dataset'
+gps_folder= '/home/patrick/Data/Incheon/data'
 folders = list_folders(path)
 for folder in folders:
     meta_path = path + '/' + folder + '/meta.json'
     gps_path = gps_folder + '/' + folder + '/meta.json'
 
-    with open(meta_path, 'r') as json_file:
-        meta = json.load(json_file)
+    try:
+        with open(meta_path, 'r') as json_file:
+            meta = json.load(json_file)
+    except:
+        print('error json ' + meta_path)
+        continue
 
-    with open(gps_path, 'r') as json_file:
-        gps = json.load(json_file)
+    try:
+        with open(gps_path, 'r') as json_file:
+            gps = json.load(json_file)
+    except:
+        print('missing field' + str(gps_path))
+        continue
 
     frames = len(meta['euler'])
     gps_data = len(gps)
