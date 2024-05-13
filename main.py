@@ -128,6 +128,19 @@ def map_continuous_ais(ais, total):
 def is_in_range(value):
     return -180 <= value <= 180
 
+'''
+reference system is different from bno055 and bno085.
+
+This transforms the coordinate system from bn085 to bno055.
+'''
+def from_bno085_to_bno055(coord):
+    out = {
+        # 'x': (360 - coord['z']) % 360,
+        'x': coord['z'],
+        'y': -coord['y'],
+        'z': -coord['x']
+    }
+    return out
 
 def magic_mf(path):
     camera_matrix, dist_coeffs = load_camera_m('camera_settings/MultiMatrix_CU81.npz')
@@ -141,6 +154,10 @@ def magic_mf(path):
 
     cont_ais = map_continuous_ais(ais, len(rgb_img))
 
+    distances = set()
+    max_dist = 0
+    mmsi = 0
+    max_pos = None
     # let the party start
     for idx in range(len(rgb_img)):
         camera_c = gps[idx]
@@ -148,14 +165,19 @@ def magic_mf(path):
         # Transforms ddmm.mmmm to dd.mmmm Data now comes in dd.mmmm so noneed to do anymore. leaving this just in case..
         # camera_c = (NMEA_to_decimal_degrees(camera_c['lat']), NMEA_to_decimal_degrees(camera_c['lon']))
         camera_c = ((camera_c['lat']), (camera_c['lon']))
-        euler = orientation[idx]
-        # transform coordinates from sensor to world coordinates.
-        # reference, 0 degrees when camera looking east
-        euler['x'] = 270 - euler['x'] + 10
+        bno085_euler = orientation[idx]
+        # bno085 has a different coord system than the original sensor.
+        euler = from_bno085_to_bno055(bno085_euler)
+        # transform coordinates from sensor to world coordinates. reference, 0 degrees when camera looking east
+        # FIXME: add this as a config. until I find a better way to abstract this. Sensor finds real north pole,
+        #  while system assumes geographycal north pole
+        # euler['x'] = 270 - euler['x'] + 10
+        euler['x'] = euler['x'] - 13
         euler['y'] = -euler['y']
-        euler['z'] = euler['z'] - 2
+        euler['z'] = euler['z'] - 5
 
         img = cv.imread(rgb_img[idx])
+
 
         for mmsi_ref, positions in cont_ais.items():
             if mmsi_ref == '440016770':
@@ -167,16 +189,16 @@ def magic_mf(path):
             if not is_in_range(ship_c[0]) or not is_in_range(ship_c[1]):
                 continue
             speed = float(position[2])
-            # 440327630 ship visible
-            # 441367000 behind camera
-            if mmsi_ref == '440065990':
+
+            proj_2d, distance, behind_frame = projection_baby(camera_matrix, dist_coeffs, camera_c, ship_c,
+                                                              (euler['x'], euler['y'], euler['z']), camera_h)
+            distances.add(distance)
+            if mmsi_ref == '440103010':
                 pass
-            proj_2d, distance, on_frame = projection_baby(camera_matrix, dist_coeffs, camera_c, ship_c,
-                                                          (euler['x'], euler['y'], euler['z']), camera_h)
-            if on_frame:
+            if behind_frame:
                 continue
             # if the distance to the ship is bigger than 4km skippe.
-            if distance > 4000:
+            if distance > 8000:
                 continue
             try:
                 if mmsi_ref != '440016770':
@@ -190,19 +212,18 @@ def magic_mf(path):
                 print('error printing circle')
         cv.imwrite(path + '/process/' + str(idx) + '.jpg', img)
 
-
 def list_folders(path):
     return [f.name for f in os.scandir(path) if f.is_dir()]
 
 
 if __name__ == '__main__':
-    # path = '/home/patrick/Data/Incheon/dataset'
-    #
-    # folders = list_folders(path)
-    #
-    # for folder in folders:
-    #     to_process = path + '/' + folder
-    #     magic_mf(to_process)
+    path = '/media/patrick-srv/Patrick_hd/dataset'
 
-    path = '/home/patrick/Data/Incheon/dataset/1700460994'
-    magic_mf(path)
+    folders = list_folders(path)
+
+    for folder in folders:
+        to_process = path + '/' + folder
+        magic_mf(to_process)
+
+    # path = '/media/patrick-srv/Patrick_hd/dataset/1711521132'
+    # magic_mf(path)
